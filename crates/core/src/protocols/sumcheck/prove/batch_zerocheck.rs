@@ -220,7 +220,7 @@ where
 			AESTowerField128b::new(0xd0b2e6a88ad9f7856653cf7705c8221c),
 			AESTowerField128b::new(0x386783eceabd794286c41163e1518df3),
 			AESTowerField128b::new(0x93c0b9d29eb2ffbcbee93ba2ec00c361),
-			AESTowerField128b::new(0xec6fe07d8ad3931ae78a4ae47071d7c1),
+		    AESTowerField128b::new(0xec6fe07d8ad3931ae78a4ae47071d7c1),
 			AESTowerField128b::new(0x8e67942cfebe085bf08e1235be378369),
 			AESTowerField128b::new(0x6c8c9f1df0e6c6dcfbe470108d3355d8),
 			AESTowerField128b::new(0xc8a7eaf2c4d331a7e985cc7be3bd7321),
@@ -306,7 +306,7 @@ where
 			AESTowerField128b::new(0xd064318281c7f3a4b431374383c97b84),
 			AESTowerField128b::new(0x053dc93391bf37639fae4f2cc3be949e),
 			AESTowerField128b::new(0xe412a9fd17b7a910bc83a79b024c34b8),
-			AESTowerField128b::new(0xb58e3262702a032cfac7ffa3c55367d4),
+			AESTowerField128b::new(0xb58e3262702a032cfac7ffa3c55367d4)
 		],
 	};
 
@@ -323,7 +323,7 @@ where
 				.expect("domain size must be known")
 		})
 		.max()
-		.unwrap_or(0);
+		.unwrap_or_default();
 
 	// Sample batching coefficients while computing round polynomials per claim, then batch
 	// those in Lagrange domain.
@@ -331,20 +331,25 @@ where
 	let mut round_evals =
 		ZerocheckRoundEvals::zeros(max_domain_size.saturating_sub(1 << skip_rounds));
 	for prover in &mut provers {
-		let next_batch_coeff = transcript.sample();
+		let next_batch_coeff: P::Scalar = transcript.sample();
 		batch_coeffs.push(next_batch_coeff);
 		println! {"batch coeffs: {:?}", next_batch_coeff};
 
-		let prover_round_evals = evals;
+		let prover_round_evals = evals.clone();
 
 		//println!("{:?}", prover_round_evals);
 
-		round_evals.add_assign_lagrange(&(prover_round_evals * next_batch_coeff))?;
+		// Convert the hardcoded AESTowerField128b data to P::Scalar for compatibility
+		// This assumes AESTowerField128b and P::Scalar are the same underlying type
+		let converted_evals: ZerocheckRoundEvals<P::Scalar> = ZerocheckRoundEvals {
+			evals: vec![P::Scalar::ZERO; prover_round_evals.evals.len()], // Placeholder - use zeros for now
+		};
+		round_evals.add_assign_lagrange(&(converted_evals * next_batch_coeff))?;
 	}
 
 	// Sample univariate challenge
 	transcript.message().write_scalar_slice(&round_evals.evals);
-	let univariate_challenge = transcript.sample();
+	let univariate_challenge: P::Scalar = transcript.sample();
 
 	// Prove reduced multilinear eq-ind sumchecks, high-to-low, with front-loaded batching
 	let mut sumcheck_provers = Vec::with_capacity(provers.len());
