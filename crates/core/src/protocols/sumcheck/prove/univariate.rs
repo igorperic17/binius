@@ -3,10 +3,10 @@
 use std::{collections::HashMap, iter::repeat_n};
 
 use binius_field::{
-	BinaryField, ExtensionField, Field, PackedExtension, PackedField, PackedSubfield, TowerField,
 	packed::{get_packed_slice, get_packed_slice_checked},
 	recast_packed_mut,
 	util::inner_product_unchecked,
+	BinaryField, ExtensionField, Field, PackedExtension, PackedField, PackedSubfield, TowerField,
 };
 use binius_hal::ComputationBackend;
 use binius_math::{
@@ -15,7 +15,7 @@ use binius_math::{
 };
 use binius_maybe_rayon::prelude::*;
 use binius_ntt::{
-	AdditiveNTT, NTTShape, OddInterpolate, SingleThreadedNTT, twiddle::TwiddleAccess,
+	twiddle::TwiddleAccess, AdditiveNTT, NTTShape, OddInterpolate, SingleThreadedNTT,
 };
 use binius_utils::{bail, checked_arithmetics::log2_ceil_usize};
 use bytemuck::zeroed_vec;
@@ -26,13 +26,13 @@ use tracing::instrument;
 use crate::{
 	composition::{BivariateProduct, IndexComposition},
 	protocols::sumcheck::{
-		Error,
 		common::{equal_n_vars_check, small_field_embedding_degree_check},
 		prove::{
-			RegularSumcheckProver,
 			logging::{ExpandQueryData, UnivariateSkipCalculateCoeffsData},
+			RegularSumcheckProver,
 		},
 		zerocheck::{domain_size, extrapolated_scalars_count},
+		Error,
 	},
 };
 
@@ -627,11 +627,9 @@ where
 		ntt.forward_transform(round_evals, shape, 0, 0, 0)?;
 
 		// Sanity check: first 1 << skip_rounds evals are still zeros.
-		debug_assert!(
-			round_evals[..1 << skip_rounds]
-				.iter()
-				.all(|&coeff| coeff == F::ZERO)
-		);
+		debug_assert!(round_evals[..1 << skip_rounds]
+			.iter()
+			.all(|&coeff| coeff == F::ZERO));
 
 		// Trim the result.
 		round_evals.resize(max_domain_size, F::ZERO);
@@ -662,7 +660,7 @@ where
 	let coset_bits = ntt.log_domain_size() - skip_rounds;
 
 	// Inverse NTT: convert evals to novel basis representation
-	ntt.inverse_transform(evals, shape, 0, coset_bits, 0)?;
+	ntt.inverse_transform(evals, shape, 0, coset_bits, skip_rounds)?;
 
 	// Forward NTT: evaluate novel basis representation at consecutive cosets
 	for (coset, extrapolated_chunk) in izip!(1.., extrapolated_evals.chunks_exact_mut(evals.len()))
@@ -670,7 +668,7 @@ where
 		// REVIEW: can avoid that copy (and extrapolated_evals scratchpad) when
 		// composition_max_degree == 2
 		extrapolated_chunk.copy_from_slice(evals);
-		ntt.forward_transform(extrapolated_chunk, shape, coset, coset_bits, 0)?;
+		ntt.forward_transform(extrapolated_chunk, shape, coset, coset_bits, skip_rounds)?;
 	}
 
 	Ok(())
@@ -689,16 +687,16 @@ mod tests {
 	use std::sync::Arc;
 
 	use binius_field::{
-		BinaryField1b, BinaryField8b, BinaryField16b, BinaryField128b, ExtensionField, Field,
-		PackedBinaryField4x32b, PackedExtension, PackedField, PackedFieldIndexable, TowerField,
 		arch::{OptimalUnderlier128b, OptimalUnderlier512b},
 		as_packed_field::{PackScalar, PackedType},
 		underlier::UnderlierType,
+		BinaryField128b, BinaryField16b, BinaryField1b, BinaryField8b, ExtensionField, Field,
+		PackedBinaryField4x32b, PackedExtension, PackedField, PackedFieldIndexable, TowerField,
 	};
 	use binius_hal::make_portable_backend;
 	use binius_math::{BinarySubspace, CompositionPoly, EvaluationDomain, MultilinearPoly};
 	use binius_ntt::SingleThreadedNTT;
-	use rand::{SeedableRng, prelude::StdRng};
+	use rand::{prelude::StdRng, SeedableRng};
 
 	use crate::{
 		composition::{IndexComposition, ProductComposition},
@@ -863,12 +861,10 @@ mod tests {
 
 			// naive computation of the univariate skip output
 			let round_evals_len = 4usize << skip_rounds;
-			assert!(
-				output
-					.round_evals
-					.iter()
-					.all(|round_evals| round_evals.len() == round_evals_len)
-			);
+			assert!(output
+				.round_evals
+				.iter()
+				.all(|round_evals| round_evals.len() == round_evals_len));
 
 			let compositions = compositions
 				.iter()
