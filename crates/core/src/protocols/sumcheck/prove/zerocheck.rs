@@ -3,10 +3,10 @@
 use std::{marker::PhantomData, mem, sync::Arc};
 
 use binius_field::{
-	ExtensionField, Field, PackedExtension, PackedField, PackedSubfield, RepackedExtension,
-	TowerField,
 	packed::{copy_packed_from_scalars_slice, get_packed_slice, set_packed_slice},
 	util::powers,
+	ExtensionField, Field, PackedExtension, PackedField, PackedSubfield, RepackedExtension,
+	TowerField,
 };
 use binius_hal::{ComputationBackend, ComputationBackendExt};
 use binius_math::{
@@ -16,24 +16,24 @@ use binius_math::{
 use binius_maybe_rayon::prelude::*;
 use binius_utils::bail;
 use bytemuck::zeroed_vec;
-use itertools::{Either, izip};
+use itertools::{izip, Either};
 use tracing::instrument;
 
 use crate::{
 	polynomial::MultilinearComposite,
 	protocols::sumcheck::{
-		Error,
-		common::{CompositeSumClaim, equal_n_vars_check},
+		common::{equal_n_vars_check, CompositeSumClaim},
 		prove::{
-			SumcheckProver, ZerocheckProver,
 			common::fold_partial_eq_ind,
 			eq_ind::EqIndSumcheckProverBuilder,
 			univariate::{
-				ZerocheckUnivariateEvalsOutput, ZerocheckUnivariateFoldResult,
-				zerocheck_univariate_evals,
+				zerocheck_univariate_evals, ZerocheckUnivariateEvalsOutput,
+				ZerocheckUnivariateFoldResult,
 			},
+			SumcheckProver, ZerocheckProver,
 		},
-		zerocheck::{ZerocheckRoundEvals, domain_size},
+		zerocheck::{domain_size, ZerocheckRoundEvals},
+		Error,
 	},
 };
 
@@ -189,13 +189,7 @@ enum ZerocheckProverState<
 
 #[allow(clippy::derivable_impls)]
 impl<Multilinears, PaddedMultilinears, Compositions, EvalsOutput, DomainFactory> Default
-	for ZerocheckProverState<
-		Multilinears,
-		PaddedMultilinears,
-		Compositions,
-		EvalsOutput,
-		DomainFactory,
-	>
+	for ZerocheckProverState<Multilinears, PaddedMultilinears, Compositions, EvalsOutput, DomainFactory>
 {
 	fn default() -> Self {
 		// Default impl is used to allow mem::take on prover state
@@ -280,8 +274,7 @@ impl<'a, F, FDomain, FBase, P, CompositionBase, Composition, M, DomainFactory, B
 		M,
 		DomainFactory,
 		Backend,
-	>
-where
+	> where
 	F: TowerField,
 	FDomain: TowerField,
 	FBase: ExtensionField<FDomain>,
@@ -369,6 +362,8 @@ where
 				},
 			)?;
 
+		println!("ueo, {:?}", &univariate_evals_output);
+
 		self.state = ZerocheckProverState::Folding {
 			skip_rounds,
 			padded_multilinears,
@@ -376,6 +371,8 @@ where
 			domain_factory,
 			univariate_evals_output,
 		};
+
+		println!("bre, {:?}", batched_round_evals);
 
 		Ok(batched_round_evals)
 	}

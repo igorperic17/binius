@@ -4,12 +4,12 @@ use std::iter::repeat_with;
 
 use binius_core::{
 	fiat_shamir::HasherChallenger,
-	protocols::sumcheck::prove::{ZerocheckProverImpl, batch_prove_zerocheck},
+	protocols::sumcheck::prove::{batch_prove_zerocheck, ZerocheckProverImpl},
 	transcript::ProverTranscript,
 };
 use binius_field::{
-	AESTowerField8b, AESTowerField128b, BinaryField1b, PackedField,
-	arch::OptimalUnderlier128b as OptimalUnderlier, as_packed_field::PackedType,
+	arch::OptimalUnderlier128b as OptimalUnderlier, as_packed_field::PackedType, AESTowerField128b,
+	AESTowerField8b, BinaryField1b, PackedField,
 };
 use binius_hal::make_portable_backend;
 use binius_hash::groestl::Groestl256;
@@ -17,9 +17,9 @@ use binius_math::{
 	ArithCircuit, CompositionPoly, IsomorphicEvaluationDomainFactory, MLEEmbeddingAdapter,
 	MultilinearExtension,
 };
-use criterion::{Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
-use rand::{SeedableRng, rngs::StdRng};
+use rand::{rngs::StdRng, SeedableRng};
 
 #[derive(Debug, Default, Copy, Clone)]
 struct Rank1Composition;
@@ -65,7 +65,7 @@ fn bench_univariate_skip_aes_tower(c: &mut Criterion) {
 
 	type Challenger = HasherChallenger<Groestl256>;
 
-	let skip_rounds = 7;
+	let skip_rounds = 1;
 
 	let mut group = c.benchmark_group("zerocheck");
 
