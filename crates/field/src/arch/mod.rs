@@ -13,7 +13,23 @@ cfg_if! {
 
 		mod x86_64;
 		pub use x86_64::{packed_128, packed_256, packed_512, packed_aes_128, packed_aes_256, packed_aes_512, packed_polyval_128, packed_polyval_256, packed_polyval_512};
+	} else if #[cfg(all(target_arch = "aarch64", target_feature = "sve2"))] {
+		// SVE2 provides the best ARM performance with enhanced vector operations
+		#[allow(dead_code)]
+		pub mod portable;
+
+		pub mod aarch64;
+		pub use aarch64::{packed_128, packed_256, packed_512, packed_aes_128, packed_aes_256, packed_aes_512, packed_polyval_128, packed_polyval_256, packed_polyval_512};
+	} else if #[cfg(all(target_arch = "aarch64", target_feature = "sve"))] {
+		// SVE (base) still provides significant benefits over NEON
+		#[allow(dead_code)]
+		pub mod portable;
+
+		pub mod aarch64;
+		pub use aarch64::{packed_128, packed_256, packed_aes_128, packed_aes_256, packed_polyval_128, packed_polyval_256};
+		pub use portable::{packed_512, packed_aes_512, packed_polyval_512};
 	} else if #[cfg(target_arch = "aarch64")] {
+		// Fallback to NEON or portable depending on available features
 		#[allow(dead_code)]
 		pub mod portable;
 
@@ -21,6 +37,7 @@ cfg_if! {
 		pub use aarch64::{packed_128, packed_polyval_128, packed_aes_128};
 		pub use portable::{packed_256, packed_512, packed_aes_256, packed_aes_512, packed_polyval_256, packed_polyval_512};
 	} else {
+		// Pure portable implementation for other architectures
 		pub mod portable;
 		pub use portable::{packed_128, packed_256, packed_512, packed_aes_128, packed_aes_256, packed_aes_512, packed_polyval_128, packed_polyval_256, packed_polyval_512};
 	}

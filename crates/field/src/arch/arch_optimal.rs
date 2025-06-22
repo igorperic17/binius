@@ -62,7 +62,29 @@ cfg_if! {
 		pub type OptimalUnderlier256b = ScaledUnderlier<OptimalUnderlier128b, 2>;
 		pub type OptimalUnderlier512b = ScaledUnderlier<OptimalUnderlier256b, 2>;
 		pub type OptimalUnderlier = OptimalUnderlier128b;
+	} else if #[cfg(all(target_arch = "aarch64", target_feature = "sve2", target_feature = "aes"))] {
+		// SVE2 provides the best ARM performance with scalable vector operations
+		// Use SVE-optimized implementations for maximum throughput
+		use crate::underlier::ScaledUnderlier;
+
+		pub const OPTIMAL_ALIGNMENT: usize = 256; // SVE can be up to 2048-bit, but 256 is a safe default
+
+		pub type OptimalUnderlier128b = crate::arch::aarch64::sve::M128;
+		pub type OptimalUnderlier256b = crate::arch::aarch64::sve::M256;
+		pub type OptimalUnderlier512b = crate::arch::aarch64::sve::M512;
+		pub type OptimalUnderlier = OptimalUnderlier256b; // SVE optimal width
+	} else if #[cfg(all(target_arch = "aarch64", target_feature = "sve", target_feature = "aes"))] {
+		// SVE (without SVE2) still provides significant benefits over NEON
+		use crate::underlier::ScaledUnderlier;
+
+		pub const OPTIMAL_ALIGNMENT: usize = 256; // SVE can be up to 2048-bit, but 256 is a safe default
+
+		pub type OptimalUnderlier128b = crate::arch::aarch64::sve::M128;
+		pub type OptimalUnderlier256b = crate::arch::aarch64::sve::M256;
+		pub type OptimalUnderlier512b = ScaledUnderlier<OptimalUnderlier256b, 2>;
+		pub type OptimalUnderlier = OptimalUnderlier256b; // SVE optimal width
 	} else if #[cfg(all(target_arch = "aarch64", target_feature = "neon", target_feature = "aes"))] {
+		// Fallback to NEON when SVE is not available
 		use crate::underlier::ScaledUnderlier;
 
 		pub const OPTIMAL_ALIGNMENT: usize = 128;
